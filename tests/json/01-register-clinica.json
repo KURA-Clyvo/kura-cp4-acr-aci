@@ -1,0 +1,15 @@
+{
+  "nmClinica": "Clinica Veterinaria CP4",
+  "nrCnpj": "12.345.678/0001-99",
+  "nmRazaoSocial": "Clinica Veterinaria CP4 Ltda",
+  "dsEndereco": "Rua das Palmeiras, 456",
+  "nmCidade": "Sao Paulo",
+  "sgUf": "SP",
+  "nrCep": "01310-100",
+  "nrTelefone": "11987654321",
+  "dsEmail": "contato@clinicacp4.com.br",
+  "dsEmailAcesso": "gestor.cp4@clinicacp4.com.br",
+  "dsSenha": "Senha@CP4",
+  "nmVeterinarioAdmin": "Dra. Ana Souza",
+  "nrCRMV": "SP-12345"
+}

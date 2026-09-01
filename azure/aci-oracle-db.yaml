@@ -1,0 +1,72 @@
+# =============================================================================
+# KURA CP4 · Container Group — Oracle XE (ACI #1 do núcleo exigido)
+#
+# Este é um TEMPLATE com placeholders (__ALGO__). deploy.sh gera a versão
+# preenchida em azure/.generated/aci-oracle-db.yaml (gitignored, porque leva
+# segredo em texto — ver nota abaixo) e chama:
+#   az container create --resource-group <RG> --file azure/.generated/aci-oracle-db.yaml
+#
+# Por que os segredos vão em texto no YAML final (e não só via
+# --secure-environment-variables da CLI): o schema de manifesto do ACI
+# (`az container create --file`) não tem um mecanismo de "arquivo de secrets"
+# separado — o campo `secureValue` dentro de `environmentVariables` JÁ É a
+# forma seatura suportada (o valor não aparece em `az container show`/logs,
+# só na criação). O arquivo gerado com os valores reais nunca é commitado
+# (azure/.generated/ está no .gitignore) e deploy.sh apaga/recria a cada run.
+# =============================================================================
+apiVersion: '2021-10-01'
+location: __LOCATION__
+name: __ORACLE_ACI_NAME__
+tags:
+  projeto: kura-cp4
+  rm: __RM__
+  componente: banco
+properties:
+  osType: Linux
+  restartPolicy: OnFailure
+  imageRegistryCredentials:
+    - server: __ACR_LOGIN_SERVER__
+      username: __ACR_USERNAME__
+      password: __ACR_PASSWORD__
+  containers:
+    - name: __ORACLE_ACI_NAME__
+      properties:
+        image: __ACR_LOGIN_SERVER__/__RM_LOWER__/kura-oracle-db:latest
+        # Oracle XE é pesado para inicializar — 2 vCPU / 4GB é o mínimo
+        # confortável para o primeiro boot (criação do PDB) não estourar timeout.
+        resources:
+          requests:
+            cpu: 2
+            memoryInGb: 4
+        ports:
+          - port: 1521
+            protocol: TCP
+        environmentVariables:
+          # Senha do usuário SYS/SYSTEM
+          - name: ORACLE_PASSWORD
+            secureValue: __ORACLE_SYS_PASSWORD__
+          # Usuário de aplicação criado automaticamente pela imagem
+          - name: APP_USER
+            value: __ORACLE_APP_USER__
+          - name: APP_USER_PASSWORD
+            secureValue: __ORACLE_APP_PASSWORD__
+        volumeMounts:
+          # RUBRICA — persistência em Conta de Armazenamento (Azure Files),
+          # não volume efêmero. Equivalente ao named volume kura-oracle-data
+          # do docker-compose.yml original, mas em Azure Files em vez de
+          # volume Docker local.
+          - name: oracle-data
+            mountPath: /opt/oracle/oradata
+  ipAddress:
+    type: Public
+    dnsNameLabel: __ORACLE_ACI_NAME__
+    ports:
+      - protocol: TCP
+        port: 1521
+  volumes:
+    - name: oracle-data
+      azureFile:
+        shareName: __STORAGE_FILE_SHARE_NAME__
+        storageAccountName: __STORAGE_ACCOUNT_NAME__
+        storageAccountKey: __STORAGE_ACCOUNT_KEY__
+type: Microsoft.ContainerInstance/containerGroups

@@ -1,0 +1,81 @@
+# =============================================================================
+# KURA CP4 · Container Group — .NET API / backend clínica (ACI #2 do núcleo)
+#
+# Template com placeholders (formato __ALGO__), preenchido por deploy.sh em
+# azure/.generated/aci-dotnet-api.yaml (gitignored). A connection string do
+# Oracle (ver env var ConnectionStrings__DefaultConnection logo abaixo) é
+# montada pelo deploy.sh DEPOIS de criar o ACI do Oracle, porque depende do
+# FQDN público que só existe depois do `az container create` do banco — não
+# dá para preencher os dois manifestos de uma vez só.
+#
+# Variáveis de ambiente abaixo são as MESMAS lidas hoje pelo Kura.Api, uma a
+# uma conferidas contra DevOps-Cloud/docker-compose.yml (serviço kura-api) —
+# nada inventado.
+# =============================================================================
+apiVersion: '2021-10-01'
+location: __LOCATION__
+name: __DOTNET_ACI_NAME__
+tags:
+  projeto: kura-cp4
+  rm: __RM__
+  componente: api-clinica
+properties:
+  osType: Linux
+  restartPolicy: OnFailure
+  imageRegistryCredentials:
+    - server: __ACR_LOGIN_SERVER__
+      username: __ACR_USERNAME__
+      password: __ACR_PASSWORD__
+  containers:
+    - name: __DOTNET_ACI_NAME__
+      properties:
+        image: __ACR_LOGIN_SERVER__/__RM_LOWER__/kura-clinica-api:latest
+        resources:
+          requests:
+            cpu: 1
+            memoryInGb: 2
+        ports:
+          - port: 8080
+            protocol: TCP
+        environmentVariables:
+          - name: ASPNETCORE_ENVIRONMENT
+            value: __ASPNETCORE_ENVIRONMENT__
+          - name: ASPNETCORE_URLS
+            value: http://+:8080
+          # Aponta para o FQDN público do ACI do Oracle (não há rede privada
+          # compartilhada entre container groups neste desenho simples de
+          # ACI — ver NOTAS-PARA-O-MAESTRO.md).
+          - name: ConnectionStrings__DefaultConnection
+            secureValue: __ORACLE_CONNECTION_STRING__
+          - name: Jwt__Key
+            secureValue: __DOTNET_JWT_KEY__
+          - name: Jwt__Issuer
+            value: kura-api
+          - name: Jwt__Audience
+            value: kura-client
+          - name: IoT__ApiKey
+            secureValue: __IOT_API_KEY__
+          - name: Luna__ApiKey
+            secureValue: __LUNA_API_KEY__
+          # FEAT-01 (Daily.co) — dummy é aceitável, o serviço aplica fallback
+          # de link manual quando a chave não é válida (não crasha).
+          - name: Daily__ApiKey
+            value: __DAILY_API_KEY__
+          # A Luna não é implantada neste CP4 — endereço dummy só para o
+          # binding não ficar vazio; nenhuma chamada real acontece.
+          - name: Luna__BaseUrl
+            value: __LUNA_BASE_URL__
+          - name: Luna__InboundApiKey
+            secureValue: __LUNA_INBOUND_API_KEY__
+          # Sem volume dedicado para o app .NET neste CP4 (só o Oracle usa
+          # Azure Files) — caminho vive na camada gravável do container e
+          # some a cada recreate. Aceitável para o escopo do checkpoint.
+          - name: Storage__BasePath
+            value: __STORAGE_BASE_PATH__
+  ipAddress:
+    type: Public
+    dnsNameLabel: __DOTNET_ACI_NAME__
+    ports:
+      - protocol: TCP
+        port: 8080
+type: Microsoft.ContainerInstance/containerGroups

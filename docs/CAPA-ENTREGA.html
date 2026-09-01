@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Capa de entrega — CP4</title>
+<style>
+  @page { size: A4; margin: 2.5cm; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; max-width: 720px; margin: 0 auto; padding: 2rem; line-height: 1.5; }
+  .fiap { color: #ec1a5c; font-weight: bold; letter-spacing: 2px; font-size: 1.1rem; }
+  h1 { font-size: 1.6rem; margin-top: 2.5rem; margin-bottom: 0.2rem; }
+  h2 { font-size: 1.1rem; color: #444; font-weight: normal; margin-top: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 2rem 0; }
+  th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #ddd; }
+  th { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: #666; }
+  .links { margin-top: 2.5rem; }
+  .links dt { font-weight: bold; margin-top: 1rem; }
+  .links dd { margin: 0.2rem 0 0 0; }
+  .links a { color: #1a3a8f; word-break: break-all; }
+  .manifesto { margin-top: 2.5rem; font-size: 0.95rem; }
+  .manifesto ul { padding-left: 1.2rem; }
+  footer { margin-top: 3rem; font-size: 0.8rem; color: #999; border-top: 1px solid #eee; padding-top: 1rem; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+
+<div class="fiap">FIAP</div>
+<p style="color:#666; margin-top:0.3rem;">Tecnologia em Desenvolvimento de Sistemas — DevOps Tools &amp; Cloud Computing</p>
+
+<h1>1º Checkpoint 2º Semestre — Containers em Nuvem (ACR/ACI)</h1>
+<h2>Projeto DimDim · Grupo 3</h2>
+
+<table>
+  <thead><tr><th>Integrante</th><th>RM</th></tr></thead>
+  <tbody>
+    <tr><td>Clayton Alves</td><td>RM562285</td></tr>
+    <tr><td>Felipe Ferrete (representante)</td><td>RM562999</td></tr>
+    <tr><td>Guilherme Sola</td><td>RM563674</td></tr>
+    <tr><td>Gustavo Bosak</td><td>RM566315</td></tr>
+    <tr><td>Nikolas Brisola</td><td>RM564371</td></tr>
+  </tbody>
+</table>
+
+<dl class="links">
+  <dt>Repositório de infraestrutura (Dockerfiles, scripts Azure CLI, DDL, JSONs de teste)</dt>
+  <dd><a href="https://github.com/KURA-Clyvo/kura-cp4-acr-aci">https://github.com/KURA-Clyvo/kura-cp4-acr-aci</a></dd>
+
+  <dt>Código-fonte da aplicação (.NET — API de clínica veterinária)</dt>
+  <dd><a href="https://github.com/KURA-Clyvo/backend-clinica-dotnet">https://github.com/KURA-Clyvo/backend-clinica-dotnet</a></dd>
+
+  <dt>Vídeo de demonstração</dt>
+  <dd>&lt;PREENCHER — link do vídeo após a gravação, antes de exportar este arquivo para PDF&gt;</dd>
+</dl>
+
+<div class="manifesto">
+  <p><strong>Material da entrega, localizado no repositório de infraestrutura:</strong></p>
+  <ul>
+    <li>DDL das tabelas (19 migrations Flyway reais, V1→V19) — <code>db/ddl/</code></li>
+    <li>Dockerfile do banco e do app — <code>db/Dockerfile</code>, <code>app-dotnet/Dockerfile</code></li>
+    <li>Scripts Azure CLI (criação de todos os recursos) — <code>azure/deploy.sh</code>, <code>azure/verify.sh</code>, <code>azure/teardown.sh</code></li>
+    <li>Manifestos YAML dos Container Instances — <code>azure/aci-*.yaml</code></li>
+    <li>JSONs de teste GET/POST/PUT/DELETE — <code>tests/json/</code></li>
+    <li>Comandos de build e push — documentados em <code>README.md</code>, §4</li>
+    <li>How-To de execução ponta a ponta — <code>README.md</code></li>
+  </ul>
+</div>
+
+<footer>
+  Como converter este arquivo para PDF: abra no navegador → Ctrl+P (ou Cmd+P) → "Salvar como PDF" →
+  renomear para <code>Grupo3_container.pdf</code> → upload no Teams pelo representante do grupo.
+</footer>
+
+</body>
+</html>

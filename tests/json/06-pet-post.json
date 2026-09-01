@@ -1,0 +1,12 @@
+{
+  "idEspecie": 1,
+  "idRaca": 1,
+  "idVeterinarioResp": null,
+  "nmPet": "Rex",
+  "dtNascimento": "2022-03-15T00:00:00Z",
+  "sgSexo": "M",
+  "sgPorte": "M",
+  "idTutor": 1,
+  "stPrincipal": true,
+  "dsVinculo": "PROPRIETARIO"
+}

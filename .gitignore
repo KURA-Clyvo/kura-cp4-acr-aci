@@ -1,0 +1,26 @@
+# =============================================================================
+# KURA CP4 — ACR/ACI · .gitignore
+# =============================================================================
+
+# Segredos reais — só o .env.example (sem valores) é versionado
+.env
+.env.*
+!.env.example
+
+# YAML de manifesto ACI com placeholders já substituídos por valor real
+# (deploy.sh gera isso em azure/.generated/ antes de chamar `az container create`)
+azure/.generated/
+
+# Logs de execução dos scripts
+*.log
+
+# Artefatos de build/publish locais, se alguém rodar `dotnet publish`/`mvn package` aqui por engano
+app-dotnet/bin/
+app-dotnet/obj/
+app-java/target/
+
+# Sistema operacional / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

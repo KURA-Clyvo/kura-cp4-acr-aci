@@ -1,0 +1,31 @@
+-- =============================================================================
+-- V4__lgpd_evidencia_consentimento.sql
+-- DECISÃO ARQUITETURAL PENDENTE — Felipe Ferrete (tech lead)
+-- Referência: §3.6 do plano v5.
+--
+-- PROPOSTA (aguardando aprovação):
+-- O schema v4 removeu os campos de evidência LGPD da tabela CONSENTIMENTO.
+-- Sem DS_TEXTO_TERMO, DS_IP_ACEITE, DT_REVOGACAO e DS_IP_REVOGACAO,
+-- a ANPD pode questionar a validade legal do consentimento (art. 7º, I LGPD).
+--
+-- Se Felipe APROVAR — substituir o SELECT abaixo por:
+--
+--   ALTER TABLE CONSENTIMENTO ADD (
+--       DS_TEXTO_TERMO    CLOB,
+--       DS_IP_ACEITE      VARCHAR2(45),
+--       DT_REVOGACAO      TIMESTAMP,
+--       DS_IP_REVOGACAO   VARCHAR2(45)
+--   );
+--
+--   COMMENT ON COLUMN CONSENTIMENTO.DS_TEXTO_TERMO IS
+--     'Snapshot do texto do termo no momento do aceite — evidência ANPD';
+--   COMMENT ON COLUMN CONSENTIMENTO.DS_IP_ACEITE IS
+--     'IP do cliente (X-Forwarded-For) — evidência legal LGPD art. 7º, I';
+--
+-- NOTA: os campos acima já existem em V1 (entity Java os mapeia).
+-- Caso aprovado, esta migration pode documentar a decisão com um COMMENT.
+-- Caso rejeitado, documentar o risco em architecture.md (T22).
+-- =============================================================================
+
+-- Aguardando decisão arquitetural. Não aplicar DDL.
+SELECT 1 FROM DUAL;

@@ -1,0 +1,70 @@
+# =============================================================================
+# KURA CP4 · Container Group — Java API / backend tutor
+#
+# ⚠️ ESTE ARQUIVO É O 3º ACI OPCIONAL — NÃO FAZ PARTE DO NÚCLEO EXIGIDO PELA
+# RUBRICA DO CP4 (que pede 2 imagens no ACR + 2 ACIs: Oracle + .NET). Isto
+# aqui é exploração extra rumo ao Challenge, a pedido do time — ver a seção
+# "EXTRA — 3º ACI opcional" em deploy.sh antes de rodar. Só é criado se
+# DEPLOY_JAVA_BONUS=true no .env.
+#
+# Template com placeholders (formato __ALGO__), preenchido por deploy.sh. A
+# env var DB_URL (logo abaixo) usa o mesmo FQDN do ACI do Oracle que o
+# manifesto .NET usa — o banco é compartilhado entre as duas APIs (mesmo
+# desenho do docker-compose.yml original: Flyway do Java cria o schema
+# completo, o .NET só lê/escreve nele).
+#
+# Variáveis conferidas contra backend-tutor-java/src/main/resources/
+# application-prod.yml e DevOps-Cloud/docker-compose.yml (serviço kura-tutor).
+# =============================================================================
+apiVersion: '2021-10-01'
+location: __LOCATION__
+name: __JAVA_ACI_NAME__
+tags:
+  projeto: kura-cp4
+  rm: __RM__
+  componente: api-tutor-bonus
+properties:
+  osType: Linux
+  restartPolicy: OnFailure
+  imageRegistryCredentials:
+    - server: __ACR_LOGIN_SERVER__
+      username: __ACR_USERNAME__
+      password: __ACR_PASSWORD__
+  containers:
+    - name: __JAVA_ACI_NAME__
+      properties:
+        image: __ACR_LOGIN_SERVER__/__RM_LOWER__/kura-tutor-api:latest
+        resources:
+          requests:
+            cpu: 1
+            memoryInGb: 2
+        ports:
+          - port: 8081
+            protocol: TCP
+        environmentVariables:
+          - name: SPRING_PROFILES_ACTIVE
+            value: prod
+          # TZ explícito — ver comentário equivalente no docker-compose.yml
+          # original (TASK-87): sem isto, LocalDateTime.now() do container
+          # cai em UTC e desalinha 3h de validações @Future de agendamento.
+          - name: TZ
+            value: America/Sao_Paulo
+          - name: DB_URL
+            value: __DB_URL__
+          - name: DB_USERNAME
+            value: __ORACLE_APP_USER__
+          - name: DB_PASSWORD
+            secureValue: __ORACLE_APP_PASSWORD__
+          - name: JWT_SECRET
+            secureValue: __JAVA_JWT_SECRET__
+          - name: JWT_ACCESS_EXPIRATION_MINUTES
+            value: "__JWT_ACCESS_EXPIRATION_MINUTES__"
+          - name: CORS_ALLOWED_ORIGINS
+            value: __CORS_ALLOWED_ORIGINS__
+  ipAddress:
+    type: Public
+    dnsNameLabel: __JAVA_ACI_NAME__
+    ports:
+      - protocol: TCP
+        port: 8081
+type: Microsoft.ContainerInstance/containerGroups
