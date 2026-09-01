@@ -43,7 +43,23 @@ tags:
   componente: banco
 properties:
   osType: Linux
-  restartPolicy: OnFailure
+  # restartPolicy: Never (NAO OnFailure) - decisao da sessao 2, com motivo.
+  #
+  # 1) DIAGNOSTICO: com OnFailure o ACI reinicia o container e o buffer de
+  #    `az container logs` e limpo a cada restart -- foi exatamente por isso
+  #    que a sessao 1 nunca conseguiu capturar o log da PRIMEIRA falha (o
+  #    log vinha vazio/None em toda checagem). Com Never o container para no
+  #    primeiro erro e o log completo do boot inicial fica disponivel.
+  #
+  # 2) CORRETUDE: para este container, reiniciar nunca conserta nada. O
+  #    container-entrypoint.sh decide o caminho de boot so pela existencia
+  #    do diretorio /opt/oracle/oradata/dbconfig/XE (funcao setup_env_vars).
+  #    Se o primeiro boot morre no meio da criacao do banco, esse diretorio
+  #    ja existe mas o oradata esta incompleto: todo restart seguinte pula a
+  #    criacao, cai direto no `startup;` e falha lendo o control file
+  #    (ORA-00204 -> ExitCode 204). E um crash loop que, por construcao,
+  #    nunca se cura sozinho -- OnFailure so gasta tempo e esconde a causa.
+  restartPolicy: Never
   imageRegistryCredentials:
     - server: __ACR_LOGIN_SERVER__
       username: __ACR_USERNAME__

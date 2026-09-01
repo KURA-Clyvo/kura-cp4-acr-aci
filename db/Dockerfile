@@ -48,16 +48,38 @@ LABEL org.opencontainers.image.source="https://github.com/KURA-Clyvo/DevOps-Clou
 # só por clareza/documentação.
 EXPOSE 1521
 
-# ─── Shim de compatibilidade cgroup v1 (Azure Container Instances) ─────────
-# Achado real medido nesta implantação: a imagem base funciona perfeitamente
-# no Docker Desktop local, mas entra em crash loop no ACI (ORA-01081 logo
-# após o listener subir) porque o entrypoint da imagem espera o caminho de
-# cgroup v2 unificado (/sys/fs/cgroup/memory.max), que não existe no ACI
-# (cgroup v1). Ver comentário completo, com evidência, em
-# cgroup-v1-shim-entrypoint.sh. USER volta para root aqui de propósito — o
-# shim precisa escrever em /sys/fs/cgroup/ (só root tem permissão nesse
-# tmpfs) antes de derrubar privilégio pro usuário 'oracle' e entregar o
-# processo pro entrypoint real da imagem.
-USER root
-COPY --chmod=755 cgroup-v1-shim-entrypoint.sh /usr/local/bin/cgroup-v1-shim-entrypoint.sh
-ENTRYPOINT ["/usr/local/bin/cgroup-v1-shim-entrypoint.sh"]
+# ─── Por que NAO existe mais um "shim de cgroup v1" aqui ───────────────────
+# A sessao 1 adicionou um ENTRYPOINT proprio (cgroup-v1-shim-entrypoint.sh)
+# partindo da hipotese de que o entrypoint da imagem base so sabia ler o
+# caminho de cgroup v2 (/sys/fs/cgroup/memory.max), inexistente no ACI.
+#
+# Na sessao 2 essa hipotese foi VERIFICADA CONTRA O CODIGO REAL da imagem e
+# se mostrou FALSA. Em gvenzl/oracle-xe:21-slim
+# (digest sha256:ecdf4302ac3d134e1bac5ef6e0c223c2d0f4d4d2b6d551aa79b2346f1ab8f792),
+# /opt/oracle/container-entrypoint.sh linhas 306-315, a funcao
+# check_minimum_memory ja trata os dois layouts e ainda tem fallback:
+#
+#   # cgroups v2
+#   if [ -f /sys/fs/cgroup/memory.max ]; then
+#     container_memory=$(< /sys/fs/cgroup/memory.max)
+#   # cgroups v1
+#   elif [ -f /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
+#     container_memory=$(< /sys/fs/cgroup/memory/memory.limit_in_bytes)
+#   else
+#     echo "CONTAINER: INFO: Cannot determine memory, assuming default of 2 GB."
+#
+# Ou seja: em cgroup v1 (ACI) o script ja lia o valor certo sozinho, e o shim
+# era, na melhor das hipoteses, um no-op caro -- e na pior, uma variavel a
+# mais (trocava o mecanismo nativo de USER da imagem por um
+# `chroot --userspec`, mudando a arvore de processos do PID 1).
+#
+# Aritmetica que fecha o caso: o entrypoint roda com `set -Eeuo pipefail`
+# (linha 25) e o `startup;` roda sob `WHENEVER SQLERROR EXIT SQL.SQLCODE`,
+# entao o ExitCode do container E o codigo do erro ORA truncado em 8 bits.
+# O ExitCode observado no ACI foi 204 -> ORA-00204 (error in reading control
+# file). ORA-01081 daria 1081 % 256 = 57, NAO 204 -- logo o ORA-01081 que a
+# sessao 1 via no log era sintoma de um restart posterior, nao a causa da
+# primeira falha. Ver STATUS-SESSAO-2.md, secao 1.
+#
+# Por isso a imagem volta a ser o entrypoint nativo da base, sem shim: menos
+# uma variavel nao comprovada entre nos e a causa real.
