@@ -1,3 +1,11 @@
+> 🔴 **EM ANDAMENTO — leia `STATUS-SESSAO-1.md` e `PROMPT_CONTINUIDADE_SESSAO_2.md` antes de
+> qualquer coisa.** O deploy real ainda não fechou: o Oracle passou por 5 problemas reais
+> (User-Agent do apt, encoding do `az` CLI, Oracle incompatível com Azure Files, Oracle
+> incompatível com cgroup v1 do ACI — todos documentados com evidência) e o último fix está
+> aplicado mas **não confirmado 100%** no ambiente real. Os ACIs do `.NET` e do Java bônus ainda
+> nem foram criados. Não trate este README como "pronto para gravar o vídeo" sem antes ler o
+> status.
+
 # KURA CP4 · Imagem e Containers em Nuvem (ACR/ACI)
 
 **1º Checkpoint do 2º Semestre — DevOps Tools & Cloud Computing (FIAP)**
