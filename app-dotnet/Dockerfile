@@ -1,9 +1,18 @@
 # =============================================================================
 # KURA CP4 · Dockerfile do app .NET (Kura.Api — backend clínica)
-# Cópia FIEL de backend-clinica-dotnet/Dockerfile.
-# Origem: repo backend-clinica-dotnet, commit de96c70 (main, 2026-08-31).
-# Nenhuma linha de build foi alterada — só este cabeçalho de proveniência foi
-# adicionado. Se o Dockerfile de origem mudar, resincronizar manualmente.
+# Cópia de backend-clinica-dotnet/Dockerfile, com UM desvio de build
+# documentado (o workaround de User-Agent do apt, mais abaixo).
+# Origem conferida na sessão 2 contra o repo real, commit d62bcf8 (main).
+#
+# CORREÇÃO DA SESSÃO 2: este arquivo trazia uma linha
+#   COPY src/Kura.CrossCutting/Kura.CrossCutting.csproj src/Kura.CrossCutting/
+# que NÃO existe no Dockerfile de origem e cujo projeto nunca existiu no repo
+# (`git log --all -- src/Kura.CrossCutting` não retorna nada em nenhum branch).
+# O commit de96c70 citado antes aqui também não existe no repo. O build do .NET
+# quebrava com:
+#   failed to compute cache key: "/src/Kura.CrossCutting/Kura.CrossCutting.csproj": not found
+# Linha removida. Os 4 projetos abaixo são exatamente os que existem em src/.
+# Se o Dockerfile de origem mudar, resincronizar manualmente.
 # =============================================================================
 
 # Stage 1 — build
@@ -13,7 +22,6 @@ WORKDIR /app
 # Copiar apenas o csproj da Api para restaurar dependências
 COPY src/Kura.Api/Kura.Api.csproj src/Kura.Api/
 COPY src/Kura.Application/Kura.Application.csproj src/Kura.Application/
-COPY src/Kura.CrossCutting/Kura.CrossCutting.csproj src/Kura.CrossCutting/
 COPY src/Kura.Domain/Kura.Domain.csproj src/Kura.Domain/
 COPY src/Kura.Infrastructure/Kura.Infrastructure.csproj src/Kura.Infrastructure/
 
