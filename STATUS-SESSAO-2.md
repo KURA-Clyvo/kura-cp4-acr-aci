@@ -228,8 +228,31 @@ Os `ST_ATIVO = N` provam o soft delete dos passos 7 e 13 — DELETE provado, nã
 1. Gravar o vídeo — roteiro em `docs/ROTEIRO-VIDEO.md`. **Ajustar os nomes**: o roteiro fala em
    `rm562999`/`centralus`, e o ambiente vivo é `rm566315`/`eastus2`.
 2. Exportar `docs/CAPA-ENTREGA.html` para PDF (`Grupo3_container.pdf`).
-3. **`./azure/teardown.sh` ao final — OBRIGATÓRIO.** O ambiente está cobrando na subscription do
-   Gustavo (RM566315), não na do Felipe. Não deixar ligado depois da gravação.
+3. ~~`./azure/teardown.sh` ao final~~ — **JÁ FOI FEITO no fim desta sessão**, a pedido do
+   usuário. Confirmado com `az group exists --name rm566315-kura-cp4-rg` → `false`. **Custo
+   zerado, nada ficou ligado.**
+
+### Como recriar o ambiente para gravar o vídeo
+
+O `deploy.sh` é idempotente e todos os fixes desta sessão estão commitados, então recriar é um
+comando só — mas leva ~20 min (o push da imagem Oracle de 2,58 GB é o gargalo) e o Oracle sobe do
+zero:
+
+```bash
+cd kura-cp4-acr-aci
+./azure/deploy.sh          # recria RG, ACR, storage, e os 3 ACIs
+./azure/verify.sh          # confirma os 3 endpoints
+BASE_URL=http://<fqdn-do-aci-dotnet>:8080 ./tests/smoke-cp4.sh
+./azure/teardown.sh        # NAO ESQUECER depois de gravar
+```
+
+Um cuidado: o `.env` **não é versionado**. Numa máquina nova, `cp .env.example .env`, preencher os
+segredos com `openssl rand`, e ajustar `AZURE_LOCATION` para uma região que a policy da
+subscription permita (ver §0 e o comentário no `.env.example`).
+
+Outro cuidado, do §3.2: se o clone de `backend-tutor-java` estiver atrasado, o Flyway aplica só
+parte das migrations e o `.NET` quebra com `ORA-00904`. Rodar `git pull` nos repos-fonte antes do
+`deploy.sh`.
 
 ## 6. O que a sessão 3 NÃO deve refazer
 
