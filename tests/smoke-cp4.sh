@@ -40,6 +40,13 @@ if [ -z "${BASE_URL:-}" ]; then
 fi
 BASE_URL="${BASE_URL%/}"  # remove barra final, se houver
 
+# Schema da aplicacao no Oracle. Vem de ORACLE_APP_USER (mesma variavel do
+# .env usado pelo deploy.sh, que por sua vez tem default $RM), com fallback
+# em RM562999 para nao mudar o comportamento de quem rodava isto antes.
+# Sem isto o bloco de prova por SELECT sai com o schema errado quando o
+# grupo implanta com outro prefixo RM -- foi o caso na sessao 2 (RM566315).
+ESQUEMA="${ORACLE_APP_USER:-RM562999}"
+
 PY=python
 command -v python >/dev/null 2>&1 || PY=python3
 if ! command -v "$PY" >/dev/null 2>&1; then
@@ -311,10 +318,10 @@ echo
 cat <<SQLPLUS_INSTRUCTIONS
 
 ==============================================================
- PROVA POR SELECT CONTRA O ORACLE DO ACI (schema RM562999)
+ PROVA POR SELECT CONTRA O ORACLE DO ACI (schema ${ESQUEMA})
 ==============================================================
 
-O schema da aplicacao e RM562999 (ORACLE_APP_USER padrao deste ecossistema —
+O schema da aplicacao e ${ESQUEMA} (ORACLE_APP_USER padrao deste ecossistema —
 ver DevOps-Cloud/docker-compose.yml). O Oracle roda em outro container do
 mesmo grupo ACI (imagem gvenzl/oracle-xe:21-slim), service name XEPDB1,
 porta interna 1521 (no compose local ela e publicada como 9092:1521 — no
@@ -323,10 +330,10 @@ containers antes de conectar).
 
 1) Conectar com sqlplus (Oracle Instant Client) ou sqlcl:
 
-   sqlplus RM562999/<SENHA_ORACLE_APP>@<IP-OU-FQDN-DO-ACI>:<PORTA_ORACLE>/XEPDB1
+   sqlplus ${ESQUEMA}/<SENHA_ORACLE_APP>@<IP-OU-FQDN-DO-ACI>:<PORTA_ORACLE>/XEPDB1
 
    -- ou, com sqlcl:
-   sql RM562999/<SENHA_ORACLE_APP>@<IP-OU-FQDN-DO-ACI>:<PORTA_ORACLE>/XEPDB1
+   sql ${ESQUEMA}/<SENHA_ORACLE_APP>@<IP-OU-FQDN-DO-ACI>:<PORTA_ORACLE>/XEPDB1
 
    <SENHA_ORACLE_APP> = valor de ORACLE_APP_PASSWORD do .env usado no deploy
    (NUNCA commitar esse valor em lugar nenhum deste repositorio de testes).
@@ -340,10 +347,10 @@ containers antes de conectar).
        v.ID_VETERINARIO, v.NM_VETERINARIO, v.NR_CRMV, v.ST_ATIVO AS ST_ATIVO_VET,
        t.ID_TUTOR, t.NM_TUTOR, t.NR_CPF,
        p.ID_PET, p.NM_PET, p.SG_PORTE, p.ST_ATIVO AS ST_ATIVO_PET
-   FROM RM562999.CLINICA c
-   JOIN RM562999.VETERINARIO v ON v.ID_CLINICA = c.ID_CLINICA
-   JOIN RM562999.TUTOR       t ON t.ID_CLINICA = c.ID_CLINICA
-   JOIN RM562999.PET         p ON p.ID_CLINICA = c.ID_CLINICA
+   FROM ${ESQUEMA}.CLINICA c
+   JOIN ${ESQUEMA}.VETERINARIO v ON v.ID_CLINICA = c.ID_CLINICA
+   JOIN ${ESQUEMA}.TUTOR       t ON t.ID_CLINICA = c.ID_CLINICA
+   JOIN ${ESQUEMA}.PET         p ON p.ID_CLINICA = c.ID_CLINICA
    WHERE c.ID_CLINICA = $ID_CLINICA
      AND v.ID_VETERINARIO = $ID_VETERINARIO
      AND t.ID_TUTOR = $ID_TUTOR
@@ -354,12 +361,12 @@ containers antes de conectar).
    que este script inativou (DELETE fisico nunca acontece neste projeto):
 
    SELECT ID_VETERINARIO, NM_VETERINARIO, ST_ATIVO
-   FROM RM562999.VETERINARIO
+   FROM ${ESQUEMA}.VETERINARIO
    WHERE ID_VETERINARIO = $ID_VETERINARIO;
    -- esperado: ST_ATIVO = 'N'
 
    SELECT ID_PET, NM_PET, ST_ATIVO
-   FROM RM562999.PET
+   FROM ${ESQUEMA}.PET
    WHERE ID_PET = $ID_PET;
    -- esperado: ST_ATIVO = 'N'
 
