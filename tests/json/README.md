@@ -17,7 +17,7 @@ substitui por dado gerado/capturado a cada execução.
 |---|---|---|---|
 | `01-register-clinica.json` | `POST /api/v1/auth/register-clinica` | nenhuma (`AllowAnonymous`) | Cadastro self-service da clínica + veterinário admin (`GESTOR`). Devolve `201` com `accessToken` já utilizável, mas o fluxo de demo faz login separado no passo 2 para provar o par email/senha de forma independente. |
 | `02-login.json` | `POST /api/v1/auth/login` | nenhuma | Usa o mesmo par `dsEmailAcesso`/`dsSenha` do passo 1. Devolve `accessToken`, usado como `Authorization: Bearer` em todas as chamadas seguintes. |
-| `03-veterinario-post.json` | `POST /api/v1/veterinarios` | Bearer | Cria um segundo veterinário na clínica autenticada. `IdClinica` **não** é campo do DTO — vem do JWT (FD-05). |
+| `03-veterinario-post.json` | `POST /api/v1/veterinarios` | Bearer | Cria um segundo veterinário na clínica autenticada. `idClinica` **É** campo obrigatório do DTO e precisa ser `> 0` — corrigido na sessão 2. Uma versão anterior deste README afirmava o contrário ("vem do JWT"), e o payload sem o campo fazia a API responder `400` com `{"errors":{"IdClinica":["'Id Clinica' must be greater than '0'."]}}` — confirmado rodando contra o ACI real. Fonte: `VeterinarioCreateDto.cs` (`public long IdClinica`) e `VeterinarioCreateValidator.cs` (`RuleFor(x => x.IdClinica).GreaterThan(0)`). No fluxo do `smoke-cp4.sh` o valor vem do `idClinica` devolvido pelo passo 1. |
 | `04-veterinario-put.json` | `PUT /api/v1/veterinarios/{id}` | Bearer | Atualiza o veterinário criado no passo 3. Mesmo shape do POST (não há DTO de patch parcial). |
 | `05-tutor-post.json` | `POST /api/v1/tutores` | Bearer | **Pré-requisito da entidade Pet**, não uma das "duas entidades" do CRUD em si — `Pet` exige `idTutor` de um tutor já existente (`PetsController.Create`: "vinculado a um tutor existente"). Cria o tutor e dispara (em modo real) um invite de onboarding; isso não afeta o teste. |
 | `06-pet-post.json` | `POST /api/v1/pets` | Bearer | `idEspecie: 1` e `idRaca: 1` vêm do catálogo de referência semeado por `V14__seed_referencia.sql` (backend-tutor-java) — `1` = espécie "Cao", `1` = raça "Labrador" (`ID_ESPECIE=1`). `idTutor` deve ser o `id` devolvido pelo passo 5 (aqui está como `1` só de exemplo). |
@@ -52,6 +52,7 @@ esses verbos sem `-d`/`--data-binary`, como o HTTP exige.
   `nmVeterinario` (máx. 200), `nrCrmv` (máx. 20) e `dsEmail` (máx. 150) são `NotEmpty()`;
   `nrTelefone` está no DTO mas **sem** regra de validação (documentado assim no próprio
   validator — nenhuma `RuleFor` sobre o campo).
+- **`03`/`04` e o campo `idClinica`**: só o DTO de veterinário tem esse campo. `TutorCreateDto` e `PetCreateDto` **não** têm — nesses a clínica vem do JWT. Conferido nos três DTOs, para ninguém generalizar a correção acima para os outros payloads.
 - **`05-tutor-post.json`**: `Kura.Application/DTOs/Tutor/TutorCreateDto.cs` +
   `TutorCreateValidator.cs`. `nrCpf` precisa ter exatamente 11 dígitos numéricos
   (`Length(11)` + regex `^[0-9]{11}$`, sem checagem de dígito verificador). `dsCanalConvite`
