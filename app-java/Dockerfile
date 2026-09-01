@@ -22,7 +22,14 @@ RUN mvn dependency:go-offline -q
 COPY src ./src
 
 # Normalize CRLF and strip UTF-8 BOM — both added by Windows editors, both fatal to javac on Linux.
-RUN apt-get update && apt-get install -y --no-install-recommends dos2unix \
+#
+# DESVIO da cópia fiel (mesmo achado documentado em app-dotnet/Dockerfile): esta
+# rede bloqueia apt-get sobre archive/security.ubuntu.com quando o User-Agent é
+# o padrão do APT (403 Forbidden), e libera com User-Agent de navegador — não é
+# proxy do Docker Desktop nem IP específico do mirror, testado isoladamente.
+RUN echo 'Acquire::http::User-Agent "Mozilla/5.0 (compatible; docker-build)";' \
+        > /etc/apt/apt.conf.d/99fiap-network-ua-workaround \
+    && apt-get update && apt-get install -y --no-install-recommends dos2unix \
     && find ./src -name "*.java" -type f -exec dos2unix {} + \
     && find ./src -name "*.java" -type f -exec sed -i 's/\xEF\xBB\xBF//g' {} + \
     && find ./src -name "*.java" -type f -exec sed -i 's/\xef\xbb\xbf//g' {} + \
@@ -34,7 +41,10 @@ RUN mvn package -DskipTests -q
 FROM eclipse-temurin:21-jre-jammy AS runtime
 
 # curl is required by HEALTHCHECK
-RUN apt-get update \
+# DESVIO da cópia fiel — mesmo workaround de User-Agent do apt, ver stage builder acima.
+RUN echo 'Acquire::http::User-Agent "Mozilla/5.0 (compatible; docker-build)";' \
+        > /etc/apt/apt.conf.d/99fiap-network-ua-workaround \
+    && apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 

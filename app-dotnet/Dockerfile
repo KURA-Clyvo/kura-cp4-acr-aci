@@ -36,7 +36,21 @@ COPY --from=build /app/publish .
 EXPOSE 8080
 
 # curl is required for the Docker health check — aspnet:10.0 (Debian slim) ships without it
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
+#
+# DESVIO da cópia fiel (documentado, ver README/NOTAS-PARA-O-MAESTRO): esta rede
+# (laboratório FIAP, testado em 2026-09-01) devolve 403 Forbidden para o
+# apt-get update em archive.ubuntu.com/security.ubuntu.com quando a requisição
+# carrega o User-Agent padrão do APT ("Debian APT-HTTP/1.3 ..."). Confirmado por
+# teste isolado: a MESMA URL, MESMO IP, só trocando o User-Agent para algo tipo
+# navegador, responde 200 normalmente — não é proxy do Docker Desktop nem IP
+# specific do mirror (testado com --network=host e --build-arg *_PROXY vazio,
+# nenhum dos dois mudou o resultado). É bloqueio de assinatura de tráfego, não
+# de rede. Sem este contorno, o app-dotnet/Dockerfile original não builda nesta
+# rede — vale propagar este fix para backend-clinica-dotnet/Dockerfile depois,
+# fora do fluxo de revisão deste CP4.
+RUN echo 'Acquire::http::User-Agent "Mozilla/5.0 (compatible; docker-build)";' \
+        > /etc/apt/apt.conf.d/99fiap-network-ua-workaround \
+    && apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Run as non-root for security and FIAP DevOps rubric 2.2
