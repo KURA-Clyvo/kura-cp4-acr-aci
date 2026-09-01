@@ -104,15 +104,17 @@ resultado até o momento em que a sessão precisou parar:
 - `restartCount` chegou a **0** bem mais longe no boot do que qualquer tentativa anterior — as
   tentativas 1–4 (achados #3 e #4 acima) sempre crashavam quase imediatamente após o listener
   subir; desta vez o container passou por "uncompressing database data files... done" sem crash
-  e ficou `state: Running` por um tempo visivelmente maior. **É evidência forte de que o fix
-  ajudou.**
-- Mas `restartCount` **incrementou pra 1** antes da sessão terminar. **O log desse crash
-  específico não foi capturado** (a checagem seguinte já mostrou `az container logs` vazio —
-  buffer limpo pro próximo restart, mesmo padrão de antes).
-- Ou seja: **não dá pra afirmar que o problema #4 está 100% resolvido.** Pode ser: (a) o mesmo
-  `ORA-01081` ainda acontecendo, só que mais tarde no boot (progresso parcial, não solução
-  completa); (b) um problema novo e diferente, só visível depois que o #4 parou de bloquear cedo;
-  (c) um crash isolado sem relação com os anteriores (menos provável, mas não descartado).
+  e ficou `state: Running` por um tempo visivelmente maior. **É evidência de que o fix ajudou.**
+- **Atualizado na checagem final, depois do encerramento do turno anterior:** `restartCount`
+  subiu pra **1** e depois **2**, `state: Waiting` (crash loop confirmado, não foi um crash
+  isolado). Em nenhuma das checagens o `az container logs` capturou o conteúdo do crash em si —
+  sempre veio vazio (`None`), porque a checagem aconteceu depois do buffer já ter sido limpo pro
+  próximo restart.
+- **Conclusão honesta: o problema #4 (cgroup v1) melhorou mas NÃO foi resolvido por completo.**
+  O container agora progride mais no boot antes de crashar (sinal de que o shim está fazendo
+  efeito), mas ainda crasha. A causa exata deste crash específico (se é o mesmo `ORA-01081` mais
+  tarde no ciclo, ou algo novo destravado pelo shim) **não foi confirmada** — é o primeiro passo
+  da sessão 2, com o loop de captura de log já pronto no prompt de continuidade.
 
 **Primeiro passo da sessão 2, antes de qualquer outra coisa**: capturar o log do restart
 ATUAL/PRÓXIMO com `az container logs --name rm562999-kura-oracle-db --resource-group
