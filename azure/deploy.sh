@@ -415,6 +415,26 @@ if ! aguardar_porta_tcp "$ORACLE_FQDN" 1521 30 30; then
 fi
 echo "  ✅ Oracle aceitando conexões em $ORACLE_FQDN:1521."
 
+# ─── Persistência real em Conta de Armazenamento (RUBRICA) ─────────────────
+# Oracle não roda com oradata direto num Azure Files (ver nota grande em
+# aci-oracle-db.yaml) — o container usa disco local do ACI para operar, e este
+# passo copia os datafiles já criados e saudáveis para o volume Azure Files
+# real (/mnt/kura-backup), montado no mesmo container group. É cópia
+# sequencial pós-boot, não E/S ao vivo do banco — por isso funciona sobre SMB
+# sem esbarrar no mesmo problema de locking/O_DIRECT.
+echo ""
+echo "  Copiando datafiles para a Conta de Armazenamento (persistência real)..."
+if az container exec \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$ACI_ORACLE_NAME" \
+    --exec-command "/bin/sh -c 'mkdir -p /mnt/kura-backup/oradata-snapshot && cp -a /opt/oracle/oradata/. /mnt/kura-backup/oradata-snapshot/ && echo BACKUP_OK'" \
+    --output tsv 2>&1 | tee "$GERADOS_DIR/backup-oracle.log" | grep -q "BACKUP_OK"; then
+    echo "  ✅ Datafiles copiados para a Storage Account (kura-oracle-data/oradata-snapshot/)."
+else
+    echo "  ⚠️  Cópia para a Storage Account não confirmou 'BACKUP_OK' — ver $GERADOS_DIR/backup-oracle.log."
+    echo "     Não aborta o deploy (o núcleo funcional não depende disto), mas revisar antes de gravar o vídeo."
+fi
+
 # ─── [7/9] Sobe o ACI do .NET (depende do Oracle já estar de pé) ────────────
 echo ""
 echo "[7/9] Subindo ACI do .NET: $ACI_DOTNET_NAME..."

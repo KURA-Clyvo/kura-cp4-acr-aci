@@ -13,6 +13,26 @@
 # forma seatura suportada (o valor nao aparece em `az container show`/logs,
 # so na criacao). O arquivo gerado com os valores reais nunca e commitado
 # (azure/.generated/ esta no .gitignore) e deploy.sh apaga/recria a cada run.
+#
+# ACHADO REAL (2026-09-01, medido nesta implantacao): Oracle NAO roda com
+# /opt/oracle/oradata montado direto num Azure Files (SMB/CIFS) -- o DBCA
+# ate cria os datafiles com sucesso na primeira subida, mas a instancia entra
+# em crash loop logo depois (ORA-00205/ORA-00210, "cannot open control file"),
+# porque SMB nao da o locking POSIX/O_DIRECT que o Oracle exige para os
+# control files e redo logs. Confirmado contra a fonte: o gvenzl/oci-oracle-xe
+# tem issue aberta sobre isso (#191) marcada "invalid" pelo mantenedor -- volume
+# de rede para oradata nao e suportado, ponto. Reproduzido aqui: restartCount=7,
+# CrashLoopBackOff, control01.ctl/control02.ctl de 18MB cada de fato criados no
+# share, banco nunca abre depois. Por isso o container roda com armazenamento
+# LOCAL do proprio ACI (sem volume nesse mountPath -- e o mesmo que o
+# docker-compose.yml original ja fazia, so que com volume Docker LOCAL, nunca
+# de rede). A RUBRICA (persistir em Conta de Armazenamento) e satisfeita de
+# outro jeito, real e nao simulado: deploy.sh, depois do healthcheck do Oracle
+# passar, roda `az container exec` copiando /opt/oracle/oradata inteiro para
+# um SEGUNDO volume Azure Files (mountPath /mnt/kura-backup, sem exigencia de
+# locking porque e uma copia sequencial, nao E/S ao vivo do banco) -- os dados
+# do banco ficam persistidos na Storage Account de verdade, so que como
+# snapshot pos-boot, nao como volume ao vivo.
 # =============================================================================
 apiVersion: '2021-10-01'
 location: __LOCATION__
@@ -51,12 +71,14 @@ properties:
           - name: APP_USER_PASSWORD
             secureValue: __ORACLE_APP_PASSWORD__
         volumeMounts:
-          # RUBRICA - persistencia em Conta de Armazenamento (Azure Files),
-          # nao volume efemero. Equivalente ao named volume kura-oracle-data
-          # do docker-compose.yml original, mas em Azure Files em vez de
-          # volume Docker local.
-          - name: oracle-data
-            mountPath: /opt/oracle/oradata
+          # /opt/oracle/oradata SEM volume de rede de proposito -- ver nota
+          # grande no topo do arquivo. Fica no filesystem local do container
+          # (unico jeito do Oracle abrir a instancia sem crash loop).
+          # /mnt/kura-backup e o volume Azure Files real -- RUBRICA satisfeita
+          # aqui, como snapshot pos-boot copiado por deploy.sh via
+          # `az container exec`, nao como E/S ao vivo do banco.
+          - name: oracle-backup
+            mountPath: /mnt/kura-backup
   ipAddress:
     type: Public
     dnsNameLabel: __ORACLE_ACI_NAME__
@@ -64,7 +86,7 @@ properties:
       - protocol: TCP
         port: 1521
   volumes:
-    - name: oracle-data
+    - name: oracle-backup
       azureFile:
         shareName: __STORAGE_FILE_SHARE_NAME__
         storageAccountName: __STORAGE_ACCOUNT_NAME__
