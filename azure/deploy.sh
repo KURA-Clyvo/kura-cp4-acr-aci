@@ -556,6 +556,34 @@ if [ "$DEPLOY_JAVA_BONUS" = "true" ]; then
         echo "⚠️  Java não respondeu 200 em 10 min. Verifique os logs:"
         echo "   az container logs --name $ACI_JAVA_NAME --resource-group $AZURE_RESOURCE_GROUP"
     fi
+
+    # ─── Reinicia o .NET agora que o schema existe (achado real da sessão 2) ─────
+    # Ordem inevitável deste script: o .NET sobe no [7/9], mas quem cria o schema
+    # é o Flyway do Java, que só roda no [8/9]. Ou seja, o .NET passa a existir
+    # apontando para um banco AINDA VAZIO. O /health dele responde 200 mesmo
+    # assim (não toca no schema), o que dá uma falsa sensação de "tudo pronto" —
+    # aí o primeiro POST de verdade quebra.
+    #
+    # Foi exatamente o que aconteceu ao rodar isto pela primeira vez: /health
+    # 200 no [7/9], e o smoke test falhando logo no register-clinica com
+    #   HTTP 500 DbUpdateException
+    #   ORA-06550 / PL/SQL: ORA-00904: "NM_RAZAO_SOCIAL": invalid identifier
+    # (a coluna vem da V8, que ainda não tinha sido aplicada).
+    #
+    # Reiniciar o .NET DEPOIS do Flyway resolve e deixa o ambiente pronto para
+    # gravar/testar sem passo manual. É barato (segundos) e idempotente.
+    echo ""
+    echo "  Reiniciando o ACI do .NET para ele enxergar o schema recém-criado pelo Flyway..."
+    az container restart \
+        --name "$ACI_DOTNET_NAME" \
+        --resource-group "$AZURE_RESOURCE_GROUP" \
+        --output none 2>/dev/null || true
+    if aguardar_http_ok "http://$DOTNET_FQDN:8080/health" 20 15; then
+        echo "  ✅ .NET de volta e saudável, agora com o schema completo."
+    else
+        echo "⚠️  .NET não voltou a responder 200 após o restart. Verifique os logs:"
+        echo "   az container logs --name $ACI_DOTNET_NAME --resource-group $AZURE_RESOURCE_GROUP"
+    fi
 else
     echo ""
     echo "[8/9] DEPLOY_JAVA_BONUS=false — pulando o 3º ACI opcional (fora da rubrica)."
