@@ -180,11 +180,58 @@ de pasta, e `application-prod.yml` usa
 `locations: classpath:db/migration,classpath:db/migration-oracle`. Logo dava para aplicar
 V7→V19 incrementalmente, sem recriar o Oracle.
 
-## 4. Estado final do ambiente
+### 3.3 O smoke test não enviava `idClinica` (commit `2e2ae8d`)
 
-<!-- PREENCHER AO FIM DA SESSÃO -->
+Passo 3 respondia `HTTP 400`:
+`{"errors":{"IdClinica":["'Id Clinica' must be greater than '0'."]}}`.
+Conferido no código: `VeterinarioCreateDto` tem a propriedade e
+`VeterinarioCreateValidator` exige `RuleFor(x => x.IdClinica).GreaterThan(0)`. O valor já estava
+disponível (`ID_CLINICA`, capturado no passo 1). `TutorCreateDto`/`PetCreateDto` **não** têm o
+campo (derivam a clínica do JWT), por isso só o payload de veterinário mudou.
 
-## 5. O que a sessão 3 NÃO deve refazer
+## 4. Estado final do ambiente — TUDO NO AR E VALIDADO
+
+Subscription **RM566315**, resource group `rm566315-kura-cp4-rg`, região **eastus2**.
+
+| Recurso | Nome | Estado |
+|---|---|---|
+| ACR | `rm566315kuraacr` | 3 imagens publicadas |
+| Storage Account | `rm566315kurastorage` | share `kura-oracle-data` com o snapshot real |
+| ACI Oracle | `rm566315-kura-oracle-db` | `Running`, `restartCount: 0`, `DATABASE IS READY TO USE!` |
+| ACI .NET | `rm566315-kura-clinica-api` | `Running`, `/health` → 200 |
+| ACI Java (bônus) | `rm566315-kura-tutor-api` | `Running`, `/api/actuator/health` → 200, schema em **v19** |
+
+Endpoints públicos (validados de fora, nunca localhost):
+
+- Oracle: `rm566315-kura-oracle-db.eastus2.azurecontainer.io:1521` (XEPDB1)
+- .NET: `http://rm566315-kura-clinica-api.eastus2.azurecontainer.io:8080` (`/health`, `/swagger`)
+- Java: `http://rm566315-kura-tutor-api.eastus2.azurecontainer.io:8081/api` (`/actuator/health`, `/swagger-ui.html`)
+
+**`azure/verify.sh`: passou 100%** (Oracle 1521 + .NET 200 + Java 200).
+
+**`tests/smoke-cp4.sh`: as 13 chamadas passaram** — register-clinica, login, veterinário
+(criar/buscar/listar/atualizar/inativar), tutor, pet (criar/buscar/listar/atualizar/inativar).
+
+**SELECT de prova**, rodado com `sqlplus` dentro do próprio container Oracle (o `.sql` foi
+enviado ao Azure Files e executado via `az container exec ... @/mnt/kura-backup/prova.sql` — 3
+tokens de argv, contornando a limitação do §3.1):
+
+```
+ID_CLINICA  NM_CLINICA                     ID_VET  NM_VETERINARIO            ATIVO  ID_TUTOR  ID_PET  ATIVO
+102         Clinica Veterinaria CP4 3049…  100     Dr. Carlos Lima Junior…   N      100       100     N
+```
+
+Os `ST_ATIVO = N` provam o soft delete dos passos 7 e 13 — DELETE provado, não assumido pelo 204.
+
+## 5. O que falta (tarefas humanas)
+
+1. Gravar o vídeo — roteiro em `docs/ROTEIRO-VIDEO.md`. **Ajustar os nomes**: o roteiro fala em
+   `rm562999`/`centralus`, e o ambiente vivo é `rm566315`/`eastus2`.
+2. Exportar `docs/CAPA-ENTREGA.html` para PDF (`Grupo3_container.pdf`).
+3. **`./azure/teardown.sh` ao final — OBRIGATÓRIO.** O ambiente está cobrando na subscription do
+   Gustavo (RM566315), não na do Felipe. Não deixar ligado depois da gravação.
+
+## 6. O que a sessão 3 NÃO deve refazer
 
 - **Não reintroduzir o shim de cgroup.** A hipótese está refutada com o código da imagem citado
   no §1. Se o Oracle voltar a falhar, a causa é outra — procure no log do primeiro boot, que
