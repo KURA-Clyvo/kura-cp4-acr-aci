@@ -1,20 +1,20 @@
 # =============================================================================
-# KURA CP4 · Container Group — Java API / backend tutor
+# KURA CP4 - Container Group - Java API / backend tutor
 #
-# ⚠️ ESTE ARQUIVO É O 3º ACI OPCIONAL — NÃO FAZ PARTE DO NÚCLEO EXIGIDO PELA
+# AVISO: ESTE ARQUIVO E O 3o ACI OPCIONAL - NAO FAZ PARTE DO NUCLEO EXIGIDO PELA
 # RUBRICA DO CP4 (que pede 2 imagens no ACR + 2 ACIs: Oracle + .NET). Isto
-# aqui é exploração extra rumo ao Challenge, a pedido do time — ver a seção
-# "EXTRA — 3º ACI opcional" em deploy.sh antes de rodar. Só é criado se
+# aqui e exploracao extra rumo ao Challenge, a pedido do time - ver a secao
+# "EXTRA - 3o ACI opcional" em deploy.sh antes de rodar. So e criado se
 # DEPLOY_JAVA_BONUS=true no .env.
 #
 # Template com placeholders (formato __ALGO__), preenchido por deploy.sh. A
 # env var DB_URL (logo abaixo) usa o mesmo FQDN do ACI do Oracle que o
-# manifesto .NET usa — o banco é compartilhado entre as duas APIs (mesmo
+# manifesto .NET usa - o banco e compartilhado entre as duas APIs (mesmo
 # desenho do docker-compose.yml original: Flyway do Java cria o schema
-# completo, o .NET só lê/escreve nele).
+# completo, o .NET so le/escreve nele).
 #
-# Variáveis conferidas contra backend-tutor-java/src/main/resources/
-# application-prod.yml e DevOps-Cloud/docker-compose.yml (serviço kura-tutor).
+# Variaveis conferidas contra backend-tutor-java/src/main/resources/
+# application-prod.yml e DevOps-Cloud/docker-compose.yml (servico kura-tutor).
 # =============================================================================
 apiVersion: '2021-10-01'
 location: __LOCATION__
@@ -44,9 +44,9 @@ properties:
         environmentVariables:
           - name: SPRING_PROFILES_ACTIVE
             value: prod
-          # TZ explícito — ver comentário equivalente no docker-compose.yml
+          # TZ explicito - ver comentario equivalente no docker-compose.yml
           # original (TASK-87): sem isto, LocalDateTime.now() do container
-          # cai em UTC e desalinha 3h de validações @Future de agendamento.
+          # cai em UTC e desalinha 3h de validacoes @Future de agendamento.
           - name: TZ
             value: America/Sao_Paulo
           - name: DB_URL

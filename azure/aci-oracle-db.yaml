@@ -1,18 +1,18 @@
 # =============================================================================
-# KURA CP4 · Container Group — Oracle XE (ACI #1 do núcleo exigido)
+# KURA CP4 - Container Group - Oracle XE (ACI #1 do nucleo exigido)
 #
-# Este é um TEMPLATE com placeholders (__ALGO__). deploy.sh gera a versão
+# Este e um TEMPLATE com placeholders (__ALGO__). deploy.sh gera a versao
 # preenchida em azure/.generated/aci-oracle-db.yaml (gitignored, porque leva
-# segredo em texto — ver nota abaixo) e chama:
+# segredo em texto - ver nota abaixo) e chama:
 #   az container create --resource-group <RG> --file azure/.generated/aci-oracle-db.yaml
 #
-# Por que os segredos vão em texto no YAML final (e não só via
+# Por que os segredos vao em texto no YAML final (e nao so via
 # --secure-environment-variables da CLI): o schema de manifesto do ACI
-# (`az container create --file`) não tem um mecanismo de "arquivo de secrets"
-# separado — o campo `secureValue` dentro de `environmentVariables` JÁ É a
-# forma seatura suportada (o valor não aparece em `az container show`/logs,
-# só na criação). O arquivo gerado com os valores reais nunca é commitado
-# (azure/.generated/ está no .gitignore) e deploy.sh apaga/recria a cada run.
+# (`az container create --file`) nao tem um mecanismo de "arquivo de secrets"
+# separado - o campo `secureValue` dentro de `environmentVariables` JA E a
+# forma seatura suportada (o valor nao aparece em `az container show`/logs,
+# so na criacao). O arquivo gerado com os valores reais nunca e commitado
+# (azure/.generated/ esta no .gitignore) e deploy.sh apaga/recria a cada run.
 # =============================================================================
 apiVersion: '2021-10-01'
 location: __LOCATION__
@@ -32,8 +32,8 @@ properties:
     - name: __ORACLE_ACI_NAME__
       properties:
         image: __ACR_LOGIN_SERVER__/__RM_LOWER__/kura-oracle-db:latest
-        # Oracle XE é pesado para inicializar — 2 vCPU / 4GB é o mínimo
-        # confortável para o primeiro boot (criação do PDB) não estourar timeout.
+        # Oracle XE e pesado para inicializar - 2 vCPU / 4GB e o minimo
+        # confortavel para o primeiro boot (criacao do PDB) nao estourar timeout.
         resources:
           requests:
             cpu: 2
@@ -42,17 +42,17 @@ properties:
           - port: 1521
             protocol: TCP
         environmentVariables:
-          # Senha do usuário SYS/SYSTEM
+          # Senha do usuario SYS/SYSTEM
           - name: ORACLE_PASSWORD
             secureValue: __ORACLE_SYS_PASSWORD__
-          # Usuário de aplicação criado automaticamente pela imagem
+          # Usuario de aplicacao criado automaticamente pela imagem
           - name: APP_USER
             value: __ORACLE_APP_USER__
           - name: APP_USER_PASSWORD
             secureValue: __ORACLE_APP_PASSWORD__
         volumeMounts:
-          # RUBRICA — persistência em Conta de Armazenamento (Azure Files),
-          # não volume efêmero. Equivalente ao named volume kura-oracle-data
+          # RUBRICA - persistencia em Conta de Armazenamento (Azure Files),
+          # nao volume efemero. Equivalente ao named volume kura-oracle-data
           # do docker-compose.yml original, mas em Azure Files em vez de
           # volume Docker local.
           - name: oracle-data
