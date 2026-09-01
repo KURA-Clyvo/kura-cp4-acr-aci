@@ -122,11 +122,69 @@ que, por construção, **não pode** se curar reiniciando.
    - `azure/aci-oracle-db.yaml` reconferido em ASCII puro depois da edição (0 bytes > 127),
      preservando o fix do achado #2 da sessão 1.
 
-## 3. Estado do deploy nesta sessão
+## 3. Mais dois achados reais, ambos só visíveis com o Oracle finalmente no ar
+
+### 3.1 O passo de backup para a Storage Account nunca funcionou (commit `1bdea3b`)
+
+A rubrica exige persistir em Conta de Armazenamento. O passo existia no `deploy.sh` desde a
+sessão 1, mas **nunca tinha sido alcançado** (o Oracle nunca ficou saudável). Alcançado nesta
+sessão, falhou — por duas armadilhas empilhadas, as duas confirmadas ao vivo:
+
+1. **`az container exec --exec-command` quebra a string em espaços e monta o argv direto**, sem
+   shell e sem respeitar aspas. A forma antiga chegava picada no meio das aspas:
+   ```
+   -p: -c: line 0: unexpected EOF while looking for matching `''
+   error executing command [/bin/sh -c 'mkdir -p /mnt/kura-backup/oradata-snapshot ]
+   ```
+2. **No Git Bash, o MSYS reescreve argumento que parece caminho POSIX** — `/bin/mkdir` virava
+   `C:/Program Files/Git/bin/mkdir`:
+   ```
+   exec: "C:/Program": stat C:/Program: no such file or directory
+   ```
+
+Fix: comandos separados em argv puro (sem shell, sem aspas, sem `&&`), cada um com
+`MSYS_NO_PATHCONV=1` **por comando** — nunca exportado global, porque `substituir_placeholders()`
+depende da conversão de path para o Python nativo do Windows (a própria função já documentava
+essa tensão). A confirmação virou a presença do control file no destino, em vez de um
+`echo BACKUP_OK` impossível em argv puro.
+
+Resultado verificado no Azure Files: `control01.ctl`/`control02.ctl` (18 MB cada),
+`system01.dbf` (917 MB), `sysaux01.dbf` (587 MB), `redo01/02.log`, `undotbs01.dbf`,
+`users01.dbf`. Persistência real, não simulada.
+
+### 3.2 O clone local do `backend-tutor-java` estava 35 commits atrás — só 6 das 19 migrations
+
+O smoke test falhou no primeiro POST com `HTTP 500 DbUpdateException`. Log do `.NET`:
+
+```
+ORA-06550: line 14, column 138:
+PL/SQL: ORA-00904: "NM_RAZAO_SOCIAL": invalid identifier
+```
+
+Log do Flyway no container Java:
+
+```
+Successfully validated 6 migrations
+Successfully applied 6 migrations to schema "RM566315", now at version v6
+```
+
+`NM_RAZAO_SOCIAL` vem da `V8__clinica_razao_social.sql`. **Não é bug do CP4** — o clone de
+`backend-tutor-java` desta máquina estava 35 commits atrás do `origin/main`, que tem as 19
+(commit `de61cd2 fix(clinica): add V8/V9 migrations for .NET/Flyway schema drift`).
+
+Antes de atualizar, foi verificado o risco de checksum: o repo reorganizou as migrations em
+pastas por dialeto (`db/migration-oracle`, `db/migration-h2`), e `V2`/`V3`/`V5` saíram de
+`db/migration/`. Se o conteúdo tivesse mudado, o Flyway falharia a validação contra o
+`flyway_schema_history` já gravado. Conferido por md5: **os três são byte-idênticos**, só mudaram
+de pasta, e `application-prod.yml` usa
+`locations: classpath:db/migration,classpath:db/migration-oracle`. Logo dava para aplicar
+V7→V19 incrementalmente, sem recriar o Oracle.
+
+## 4. Estado final do ambiente
 
 <!-- PREENCHER AO FIM DA SESSÃO -->
 
-## 4. O que a sessão 3 NÃO deve refazer
+## 5. O que a sessão 3 NÃO deve refazer
 
 - **Não reintroduzir o shim de cgroup.** A hipótese está refutada com o código da imagem citado
   no §1. Se o Oracle voltar a falhar, a causa é outra — procure no log do primeiro boot, que

@@ -199,8 +199,16 @@ echo "    -> JWT capturado (${#TOKEN} caracteres)"
 # ═══════════════════════ ENTIDADE 1: VETERINARIO ════════════════════════════
 
 # ─── 3. POST /api/v1/veterinarios ────────────────────────────────────────────
+# idClinica e OBRIGATORIO aqui (achado real da sessao 2, rodando contra o ACI):
+# VeterinarioCreateValidator tem RuleFor(x => x.IdClinica).GreaterThan(0), entao
+# sem o campo a API responde 400 com
+#   {"errors":{"IdClinica":["'Id Clinica' must be greater than '0'."]}}
+# Vem do ID_CLINICA capturado no passo 1. Note que TutorCreateDto e PetCreateDto
+# NAO tem esse campo (derivam a clinica do JWT) -- conferido nos DTOs do
+# backend-clinica-dotnet, por isso so este payload muda.
 PAYLOAD_VET_POST=$(cat <<JSON
 {
+  "idClinica": $ID_CLINICA,
   "nmVeterinario": "Dr. Carlos Lima $SUFIXO",
   "nrCrmv": "SP-VET-$SUFIXO",
   "dsEmail": "carlos.lima-$SUFIXO@clinicacp4.test",
