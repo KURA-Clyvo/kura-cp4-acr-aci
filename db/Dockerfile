@@ -47,3 +47,17 @@ LABEL org.opencontainers.image.source="https://github.com/KURA-Clyvo/DevOps-Clou
 # Porta padrão do listener Oracle — já EXPOSE na imagem base, repetido aqui
 # só por clareza/documentação.
 EXPOSE 1521
+
+# ─── Shim de compatibilidade cgroup v1 (Azure Container Instances) ─────────
+# Achado real medido nesta implantação: a imagem base funciona perfeitamente
+# no Docker Desktop local, mas entra em crash loop no ACI (ORA-01081 logo
+# após o listener subir) porque o entrypoint da imagem espera o caminho de
+# cgroup v2 unificado (/sys/fs/cgroup/memory.max), que não existe no ACI
+# (cgroup v1). Ver comentário completo, com evidência, em
+# cgroup-v1-shim-entrypoint.sh. USER volta para root aqui de propósito — o
+# shim precisa escrever em /sys/fs/cgroup/ (só root tem permissão nesse
+# tmpfs) antes de derrubar privilégio pro usuário 'oracle' e entregar o
+# processo pro entrypoint real da imagem.
+USER root
+COPY --chmod=755 cgroup-v1-shim-entrypoint.sh /usr/local/bin/cgroup-v1-shim-entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/cgroup-v1-shim-entrypoint.sh"]
