@@ -34,6 +34,17 @@
 # =============================================================================
 set -eu
 
+# ─── Força UTF-8 no Python que o `az` CLI usa internamente ──────────────────
+# Achado rodando este script de verdade: `az container create --file <yaml>`
+# falhou com "'charmap' codec can't decode byte 0x81" ao ler
+# azure/.generated/aci-oracle-db.yaml — o arquivo está em UTF-8 (comentários em
+# português com acento), mas o Python do `az` CLI usa
+# locale.getpreferredencoding() como default, que nesta máquina Windows é
+# cp1252, não utf-8. PYTHONUTF8=1 força UTF-8 como encoding padrão de I/O de
+# texto (Python 3.7+, PEP 540) sem precisar tocar em nenhum arquivo do `az`.
+export PYTHONUTF8=1
+export PYTHONIOENCODING=utf-8
+
 # ─── Localização deste script e raiz do repo ─────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
