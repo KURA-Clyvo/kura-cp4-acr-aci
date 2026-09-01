@@ -424,16 +424,42 @@ echo "  ✅ Oracle aceitando conexões em $ORACLE_FQDN:1521."
 # sem esbarrar no mesmo problema de locking/O_DIRECT.
 echo ""
 echo "  Copiando datafiles para a Conta de Armazenamento (persistência real)..."
-if az container exec \
-    --resource-group "$AZURE_RESOURCE_GROUP" \
-    --name "$ACI_ORACLE_NAME" \
-    --exec-command "/bin/sh -c 'mkdir -p /mnt/kura-backup/oradata-snapshot && cp -a /opt/oracle/oradata/. /mnt/kura-backup/oradata-snapshot/ && echo BACKUP_OK'" \
-    --output tsv 2>&1 | tee "$GERADOS_DIR/backup-oracle.log" | grep -q "BACKUP_OK"; then
-    echo "  ✅ Datafiles copiados para a Storage Account (kura-oracle-data/oradata-snapshot/)."
+
+# ATENCAO ao formato do --exec-command (achado real da sessao 2, duas armadilhas
+# empilhadas, ambas confirmadas rodando de verdade contra o ACI no ar):
+#
+# 1) O `az container exec` QUEBRA a string em espacos e monta o argv direto,
+#    sem passar por shell e sem respeitar aspas. A forma anterior,
+#      --exec-command "/bin/sh -c 'mkdir -p ... && cp -a ... && echo BACKUP_OK'"
+#    chegava no container com o argv picado no meio das aspas e morria com
+#      -p: -c: line 0: unexpected EOF while looking for matching `'"'"''
+#      error executing command [/bin/sh -c 'mkdir -p /mnt/kura-backup/oradata-snapshot ]
+#    Por isso agora sao comandos SEPARADOS, cada um em argv puro: sem shell,
+#    sem aspas internas, sem `&&`, sem `echo`.
+#
+# 2) No Git Bash do Windows, o MSYS reescreve argumento que parece caminho
+#    POSIX: "/bin/mkdir" virava "C:/Program Files/Git/bin/mkdir" e o exec
+#    falhava com  exec: "C:/Program": stat C:/Program: no such file or directory.
+#    O prefixo MSYS_NO_PATHCONV=1 desliga isso. Ele fica POR COMANDO, nunca
+#    exportado global: substituir_placeholders() logo acima DEPENDE da conversao
+#    (passa caminho de template/saida para o Python nativo do Windows) -- ver o
+#    comentario grande dela. Fora do Git Bash o prefixo e simplesmente ignorado.
+#
+# Como nao ha `echo BACKUP_OK` possivel em argv puro, a confirmacao passou a ser
+# a presenca do control file no destino -- prova melhor de qualquer forma:
+# arquivo real de 18MB copiado, nao uma string ecoada por um shell.
+BACKUP_DIR="/mnt/kura-backup/oradata-snapshot"
+MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' az container exec     --resource-group "$AZURE_RESOURCE_GROUP"     --name "$ACI_ORACLE_NAME"     --exec-command "/bin/mkdir -p $BACKUP_DIR"     --output tsv > "$GERADOS_DIR/backup-oracle.log" 2>&1 || true
+MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' az container exec     --resource-group "$AZURE_RESOURCE_GROUP"     --name "$ACI_ORACLE_NAME"     --exec-command "/bin/cp -a /opt/oracle/oradata/. $BACKUP_DIR/"     --output tsv >> "$GERADOS_DIR/backup-oracle.log" 2>&1 || true
+
+if MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' az container exec     --resource-group "$AZURE_RESOURCE_GROUP"     --name "$ACI_ORACLE_NAME"     --exec-command "/bin/ls -l $BACKUP_DIR/XE/control01.ctl"     --output tsv 2>&1 | tee -a "$GERADOS_DIR/backup-oracle.log" | grep -q "control01.ctl"; then
+    echo "  OK Datafiles copiados para a Storage Account ($STORAGE_FILE_SHARE_NAME/oradata-snapshot/)."
+    echo "     Confirmado pela presenca de XE/control01.ctl no destino."
 else
-    echo "  ⚠️  Cópia para a Storage Account não confirmou 'BACKUP_OK' — ver $GERADOS_DIR/backup-oracle.log."
-    echo "     Não aborta o deploy (o núcleo funcional não depende disto), mas revisar antes de gravar o vídeo."
+    echo "  AVISO: copia para a Storage Account nao confirmada -- ver $GERADOS_DIR/backup-oracle.log."
+    echo "     Nao aborta o deploy (o nucleo funcional nao depende disto), mas revisar antes de gravar o video."
 fi
+
 
 # ─── [7/9] Sobe o ACI do .NET (depende do Oracle já estar de pé) ────────────
 echo ""
