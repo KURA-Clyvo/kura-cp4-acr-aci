@@ -16,10 +16,12 @@
 > causa. Ver `STATUS-SESSAO-2.md` §1. Os outros achados da sessão 1 (User-Agent do apt, encoding
 > do `az` CLI, Azure Files incompatível com `oradata`) continuam válidos.
 >
-> ⚠️ **Nomenclatura:** este README descreve os recursos com prefixo `RM562999` (RM do
-> representante). O ambiente efetivamente implantado e validado usou `rm566315` em `eastus2`,
-> porque foi a subscription disponível — `centralus` é bloqueado por policy lá. O `deploy.sh`
-> deriva tudo de `$RM`, então basta o `.env` para reproduzir com qualquer prefixo.
+> **Nomenclatura da entrega:** todos os recursos usam o prefixo `RM566315` (Gustavo Bosak), na
+> região `eastus2` — é a nomenclatura oficial desta entrega, e é o que está descrito daqui para
+> baixo. A região não foi escolha estética: `centralus` é bloqueado pela policy
+> "Allowed resource deployment regions" da subscription, que só permite `southafricanorth`,
+> `eastus`, `brazilsouth`, `chilecentral` e `eastus2`. O `deploy.sh` deriva **tudo** de `$RM` e
+> `$AZURE_LOCATION`, então trocar prefixo ou região é só editar o `.env`.
 >
 > **Para recriar o ambiente** (regravar o vídeo, reconferir algo): `./azure/deploy.sh`, e
 > `./azure/teardown.sh` ao terminar — ver `STATUS-SESSAO-2.md` §5.
@@ -48,8 +50,8 @@ Prof. João Menk · Projeto DimDim
 ## 1. O que este checkpoint exige (resumo da rubrica)
 
 Duas imagens Docker (banco + app), construídas localmente com Dockerfile próprio,
-testadas localmente, registradas no **ACR** com prefixo `RM562999`, implantadas como
-**dois ACIs** (também com prefixo `RM562999`), com o banco persistindo dados numa
+testadas localmente, registradas no **ACR** com prefixo `RM566315`, implantadas como
+**dois ACIs** (também com prefixo `RM566315`), com o banco persistindo dados numa
 **Conta de Armazenamento** — e tudo isso criado **via Azure CLI**, nunca pelo Portal.
 
 | # | Peça | Onde está neste repo |
@@ -69,17 +71,17 @@ testadas localmente, registradas no **ACR** com prefixo `RM562999`, implantadas 
 ```
                           ┌─────────────────────────────┐
                           │   Azure Container Registry   │
-                          │      rm562999kuraacr         │
-                          │  rm562999/kura-oracle-db      │
-                          │  rm562999/kura-clinica-api    │
+                          │      rm566315kuraacr         │
+                          │  rm566315/kura-oracle-db      │
+                          │  rm566315/kura-clinica-api    │
                           └──────────────┬────────────────┘
                                          │ docker push
         ┌────────────────────────────────┼────────────────────────────────┐
         │                                │                                │
 ┌───────▼────────┐              ┌────────▼─────────┐            ┌─────────▼────────┐
 │  ACI (núcleo)   │   Oracle Net │  ACI (núcleo)     │            │ ACI (bônus, fora  │
-│ rm562999-kura-  │◄─────────────┤ rm562999-kura-    │            │ da rubrica CP4)   │
-│ oracle-db       │   1521       │ clinica-api (.NET)│            │ rm562999-kura-    │
+│ rm566315-kura-  │◄─────────────┤ rm566315-kura-    │            │ da rubrica CP4)   │
+│ oracle-db       │   1521       │ clinica-api (.NET)│            │ rm566315-kura-    │
 │ (gvenzl/        │              │ porta 8080         │            │ tutor-api (Java)  │
 │ oracle-xe:21)   │              │                     │            │ porta 8081         │
 └───────┬─────────┘              └────────────────────┘            └─────────┬─────────┘
@@ -88,7 +90,7 @@ testadas localmente, registradas no **ACR** com prefixo `RM562999`, implantadas 
         │                                                             aplica Flyway V1→V19)
 ┌───────▼─────────┐
 │  Storage Account │
-│ rm562999kurastorage│
+│ rm566315kurastorage│
 │ share: kura-oracle-data
 └──────────────────┘
 ```
@@ -114,7 +116,7 @@ PUT    /api/v1/pets/{id}            →  atualiza                   │
 DELETE /api/v1/pets/{id}            →  soft-delete                ┘
     │
     ▼
-sqlplus RM562999/<senha>@<FQDN-do-ACI-oracle>:1521/XEPDB1
+sqlplus RM566315/<senha>@<FQDN-do-ACI-oracle>:1521/XEPDB1
   SELECT * FROM VETERINARIO WHERE ...;   -- prova visual, uma linha por operação
   SELECT * FROM PET WHERE ...;
 ```
@@ -168,7 +170,7 @@ docker build -f ./app-java/Dockerfile   -t kura-tutor-api:local   ../backend-tut
 ./azure/verify.sh
 
 # 5. Rodar o smoke test funcional e capturar as evidências de CRUD
-BASE_URL="http://$(az container show -g rm562999-kura-cp4-rg -n rm562999-kura-clinica-api --query ipAddress.fqdn -o tsv):8080" \
+BASE_URL="http://$(az container show -g rm566315-kura-cp4-rg -n rm566315-kura-clinica-api --query ipAddress.fqdn -o tsv):8080" \
   ./tests/smoke-cp4.sh
 # Cole o comando sqlplus impresso no final para tirar o SELECT de prova (grave a tela).
 
