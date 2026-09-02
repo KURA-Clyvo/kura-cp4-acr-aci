@@ -1,10 +1,28 @@
-> 🔴 **EM ANDAMENTO — leia `STATUS-SESSAO-1.md` e `PROMPT_CONTINUIDADE_SESSAO_2.md` antes de
-> qualquer coisa.** O deploy real ainda não fechou: o Oracle passou por 5 problemas reais
-> (User-Agent do apt, encoding do `az` CLI, Oracle incompatível com Azure Files, Oracle
-> incompatível com cgroup v1 do ACI — todos documentados com evidência) e o último fix está
-> aplicado mas **não confirmado 100%** no ambiente real. Os ACIs do `.NET` e do Java bônus ainda
-> nem foram criados. Não trate este README como "pronto para gravar o vídeo" sem antes ler o
-> status.
+> ✅ **ENTREGA SUBMETIDA.** O ambiente foi implantado, validado ponta a ponta e derrubado.
+> Este banner substitui o aviso de "EM ANDAMENTO" que ficou aqui durante a sessão 1.
+>
+> O que foi validado de verdade, com evidência em `STATUS-SESSAO-2.md`: os **3 ACIs** no ar
+> (Oracle `Running` com `restartCount: 0` e `DATABASE IS READY TO USE!`, `.NET` e Java com
+> health 200), `azure/verify.sh` passando 100% por FQDN público, as **13 chamadas** de
+> `tests/smoke-cp4.sh` respondendo o HTTP esperado, o `SELECT` de prova com `ST_ATIVO = 'N'`
+> confirmando o soft delete, e o snapshot real do `oradata` na Conta de Armazenamento
+> (`system01.dbf` 917 MB, `control01/02.ctl` 18 MB cada).
+>
+> ⚠️ **Correção importante de diagnóstico:** o banner anterior citava "Oracle incompatível com
+> cgroup v1 do ACI" como uma das causas. **Essa hipótese é falsa** — foi verificada contra o
+> código da imagem na sessão 2 (`container-entrypoint.sh` linhas 306-315 já tratam cgroup v1 num
+> `elif` explícito) e o shim correspondente foi removido no commit `c905cdf`. O crash real era
+> outro: `restartPolicy: OnFailure` apagava o log do primeiro boot a cada reinício, escondendo a
+> causa. Ver `STATUS-SESSAO-2.md` §1. Os outros achados da sessão 1 (User-Agent do apt, encoding
+> do `az` CLI, Azure Files incompatível com `oradata`) continuam válidos.
+>
+> ⚠️ **Nomenclatura:** este README descreve os recursos com prefixo `RM562999` (RM do
+> representante). O ambiente efetivamente implantado e validado usou `rm566315` em `eastus2`,
+> porque foi a subscription disponível — `centralus` é bloqueado por policy lá. O `deploy.sh`
+> deriva tudo de `$RM`, então basta o `.env` para reproduzir com qualquer prefixo.
+>
+> **Para recriar o ambiente** (regravar o vídeo, reconferir algo): `./azure/deploy.sh`, e
+> `./azure/teardown.sh` ao terminar — ver `STATUS-SESSAO-2.md` §5.
 
 # KURA CP4 · Imagem e Containers em Nuvem (ACR/ACI)
 

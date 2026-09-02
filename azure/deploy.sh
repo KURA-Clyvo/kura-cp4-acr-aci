@@ -26,6 +26,24 @@
 # pede `docker build`/`docker push` explícitos, então o build acontece nesta
 # máquina e só o PUSH vai para o ACR.
 #
+# ─── ESTADO DA ENTREGA ───────────────────────────────────────────────────────
+# A entrega do CP4 já foi SUBMETIDA. Este script rodou fim a fim, o ambiente
+# foi validado (verify.sh 100%, as 13 chamadas do smoke test, SELECT de prova)
+# e depois derrubado com teardown.sh — nada ficou cobrando. Evidência completa
+# em STATUS-SESSAO-2.md.
+#
+# Rodar isto de novo NÃO é parte da entrega: serve para recriar o ambiente
+# (regravar o vídeo, reconferir algo, reaproveitar em outro checkpoint). Duas
+# coisas que fazem a recriação falhar numa máquina nova, ambas medidas de
+# verdade nesta implantação:
+#   - o .env NÃO é versionado. Sem ele o script aborta no começo. E a região
+#     precisa estar na policy "Allowed resource deployment regions" da
+#     subscription — centralus é bloqueado em subscription de aluno FIAP
+#     (o erro aparece só no passo [2/9], ao criar o ACR).
+#   - os repos-fonte precisam estar atualizados. Com um clone atrasado de
+#     backend-tutor-java, o Flyway aplica só parte das migrations e o .NET
+#     quebra com ORA-00904 no primeiro POST, mesmo com tudo "verde" no deploy.
+#
 # Idempotência: resource group, ACR e storage account só são criados se ainda
 # não existirem (checados via `az ... show` antes). Os container groups (ACI)
 # são recriados do zero a cada run (delete-se-existir + create), porque ACI
